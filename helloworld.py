@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding:utf-8 -*-
 
 # *************************
@@ -7,7 +7,7 @@
 # ** turned on SPI on    **
 # ** your Raspberry Pi   **
 # ** & installed the     **
-# ** Waveshare library   **
+# ** Inky library        **
 # *************************
 
 import os, time, sys, random
@@ -58,8 +58,10 @@ while 1:
         randomVideo = random.randint(0,videoCount-1)
         currentVideo = os.listdir(viddir)[randomVideo]
     inputVid = viddir + currentVideo
+
     print(inputVid)
-    # Ensure this matches your particular screen
+
+    # Set the width and height of the screen from the Inky library
     width = inky.width
     height = inky.height
 
@@ -72,22 +74,19 @@ while 1:
     # Convert that frame to Timecode
     msTimecode = "%dms"%(frame*41.666666)
 
-    # Use ffmpeg to extract a frame from the movie, crop it, letterbox it and save it as grab.jpg
+    # Use ffmpeg to extract a frame from the movie, crop it, letterbox
+    # it and save it as grab.jpg
     generate_frame(inputVid, 'grab.jpg', msTimecode, width, height)
 
     # Open grab.jpg in PIL
     pil_im = Image.open("grab.jpg")
-
-    # Dither the image into a 1 bit bitmap (Just zeros and ones)
-    # pil_im = pil_im.convert(mode='1',dither=Image.FLOYDSTEINBERG)
 
     # display the image
     inky.set_image(pil_im, saturation=0.25)
     inky.show()
     print('Diplaying frame %d of %s' %(frame,currentVideo))
 
-    # Wait for 10 seconds
+    # Wait for 30 seconds to allow the screen to update
     time.sleep(30)
 
-# NB We should run sleep() while the display is resting more often, but there's a bug in the driver that's slightly fiddly to fix. Instead of just sleeping, it completely shuts down SPI communication
 exit()
