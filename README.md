@@ -1,6 +1,6 @@
 # SlowMovieInColor
 
-<!-- ![](Extras/img.jpg) -->
+![](Extras/img.jpg)
 
 ## An Adaption of Tom Whitwell's SlowMovie Player to work with the Inky Impression
 
