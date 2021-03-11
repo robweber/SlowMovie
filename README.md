@@ -35,6 +35,8 @@ This is an adapted version of the SlowMovie player to work with the Inky Impress
 
 ## Extra Setup
 * To play a movie every time the Raspberry Pi boots, rather than needing to run the script from SSH, I would recommend you use cron. A guide on how to run a script at reboot can be found [here](https://www.raspberrypi-spy.co.uk/2013/07/running-a-python-script-at-boot-using-cron/).
+    - Note: When running the script after a reboot the script may crash while updating the screen. To get around this, add a time delay to your cron job before the script runs so that the system has enough time to start up properly. An example of a working cron job is:<br />
+    ```@reboot sleep 120 && /usr/bin/python3 /home/pi/SlowMovieInColor/slowmovie.py -f test.mp4 &```
 
 ## Future Work
 * The Inky Impression comes with 4 buttons on the side that can be used for various functions. The plan in the future is to use the buttons to jump forward and back several frames and to pause the movie. The final button could then be used to shutdown the Pi gracefully.
