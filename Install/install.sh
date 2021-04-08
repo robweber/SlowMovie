@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
-GIT_REPO=https://github.com/TomWhitwell/SlowMovie
-GIT_BRANCH=master
+GIT_REPO=https://github.com/robweber/SlowMovie
+GIT_BRANCH=install_script_testing
 PYTHON_VERSION=3
 SKIP_DEPS=false
 
