@@ -5,6 +5,11 @@ GIT_BRANCH=install_script_testing
 PYTHON_VERSION=3
 SKIP_DEPS=false
 
+# color code variables
+RED="\e[0;91m"
+YELLOW="\e[0;93m"
+RESET="\e[0m"
+
 function install_linux_packages(){
   sudo apt-get update
 
@@ -34,7 +39,7 @@ function build_python_libraries(){
     git clone https://github.com/waveshare/e-Paper
   fi
 
-  echo -e "$(tput setaf 1)Be patient - this takes time$(tput sgr 0)"
+  echo -e "${YELLOW}Be patient — this takes time${RESET}"
   cd $WAVESHARE_DIR/RaspberryPi_JetsonNano/python/
   sudo python3 setup.py install
 
@@ -51,12 +56,14 @@ function setup_hardware(){
           sudo raspi-config nonint do_spi 0
           echo -e "SPI is now enabled"
       else
-          echo -e "$(tput setaf 1)There was an error enabling SPI, enable manually with sudo raspi-config$(tput sgr 0)"
+          echo -e "${RED}There was an error enabling SPI, enable manually with sudo raspi-config${RESET}"
       fi
   fi
 }
 
 function install_slowmovie(){
+  FIRST_TIME=1  # if this is a first time install
+
   if [ "$SKIP_DEPS" = false ]; then
     # install from apt
     install_linux_packages
@@ -68,20 +75,19 @@ function install_slowmovie(){
   fi
 
   if [ -d "${LOCAL_DIR}" ]; then
-    echo -e "Existing Install - Updating Repo"
+    echo -e "Existing Install Found - Updating Repo"
+    cd $LOCAL_DIR
+    git fetch
+    git checkout $GIT_BRANCH
+    git pull
+
+    # go back to home directory
+    cd /home/pi/
   else
     echo -e "No Install Found - Cloning Repo"
-    git clone ${GIT_REPO} ${LOCAL_DIR}
+    git clone -b ${GIT_BRANCH} ${GIT_REPO} ${LOCAL_DIR}
+    FIRST_TIME=0
   fi
-
-  # update the repo
-  cd $LOCAL_DIR
-  git fetch
-  git checkout $GIT_BRANCH
-  git pull
-
-  # go back to home directory
-  cd /home/pi/
 
   if [ "$SKIP_DEPS" = false ]; then
     # install any needed python packages
@@ -92,9 +98,9 @@ function install_slowmovie(){
   fi
 
   cd $LOCAL_DIR
-  echo -e "SlowMovie install complete"
-  echo -e "To test run $(tput setaf 3)python3 slowmovie.py$(tput sgr 0)"
+  echo -e "SlowMovie install/update complete"
 
+  return $FIRST_TIME
 }
 
 function install_service(){
@@ -105,9 +111,9 @@ function install_service(){
     sudo systemctl daemon-reload
     sudo systemctl enable slowmovie
 
-    echo -e "SlowMovie service installed use $(tput setaf 3)sudo systemctl start slowmovie$(tput sgr 0) to test"
+    echo -e "SlowMovie service installed! Use ${YELLOW}sudo systemctl start slowmovie${RESET} to test"
   else
-    echo -e "$(tput setaf 1)SlowMovie repo does not exist, do that first$(tput sgr 0)"
+    echo -e "${RED}SlowMovie repo does not exist! Use option 1 - Install/Upgrade SlowMovie first${RESET}"
   fi
 
   # go back to home
@@ -122,9 +128,9 @@ function uninstall_service(){
     sudo rm /etc/systemd/system/slowmovie.service
     sudo systemctl daemon-reload
 
-    echo -e "SlowMovie service is uninstalled"
+    echo -e "SlowMovie service was successfully uninstalled"
   else
-    echo -e "$(tput setaf 1)SlowMovie is not installed, nothing to clean up$(tput sgr 0)"
+    echo -e "${RED}SlowMovie service is already uninstalled.${RESET}"
   fi
 }
 
@@ -155,47 +161,28 @@ done
 # set the local directory
 LOCAL_DIR="/home/pi/$(basename $GIT_REPO)"
 
-# clear screen
-  clear;
-
-  # Set color of logo
-  # Logo generated from: http://patorjk.com/software/taag/
-  tput setaf 4
-  tput bold
-
-  cat << "EOF"
-     _____ _               __  __            _
-    / ____| |             |  \/  |          (_)
-   | (___ | | _____      _| \  / | _____   ___  ___
-    \___ \| |/ _ \ \ /\ / / |\/| |/ _ \ \ / / |/ _ \
-    ____) | | (_) \ V  V /| |  | | (_) \ V /| |  __/
-   |_____/|_|\___/ \_/\_/ |_|  |_|\___/ \_/ |_|\___|
-
-EOF
-
-# reset terminal color
-tput sgr 0
-
-echo -e "SlowMovie Repo set to $(tput setaf 3)${GIT_REPO}/${GIT_BRANCH}$(tput sgr 0)"
-echo -e "Setting up in local directory $(tput setaf 3)${LOCAL_DIR}$(tput sgr 0)"
+echo -e "SlowMovie Repo set to ${YELLOW}${GIT_REPO}/${GIT_BRANCH}${RESET}"
+echo -e "Setting up in local directory ${YELLOW}${LOCAL_DIR}${RESET}"
 echo -e ""
 cd /home/pi/
 
-echo "1 - Install/Upgrade SlowMovie"
-echo "2 - Install SlowMovie Service"
-echo "3 - Uninstall SlowMovie Service"
-echo "4 - Exit"
-echo ""
+INSTALL_OPTION=$(whiptail --menu "Choose what you want to do." 0 0 0 1 "Install/Upgrade SlowMovie" 2 "Install SlowMovie Service" 3 "Uninstall SlowMovie Service" 4 "Exit" 3>&1 1>&2 2>&3)
 
-INSTALL_OPTION=0
-
-while [ "$INSTALL_OPTION" = "" ] || [ $INSTALL_OPTION -le 0 ] || [ $INSTALL_OPTION -gt 4 ]; do
-        read -p "Choose what you want to do? " INSTALL_OPTION
-done
+: ${INSTALL_OPTION:=4}
 
 if [ $INSTALL_OPTION -eq 1 ]; then
 	# install or update
   install_slowmovie
+
+  # prompt for service install if the first time being run
+  if [ $? -eq 0 ]; then
+    whiptail --yesno "SlowMovie install complete. To test, run 'python3 slowmovie.py'\n\nWould you like to install the SlowMovie Service to\nstart playback automatically?" 0 0
+
+    if [ $? -eq 0 ]; then
+      install_service
+    fi
+  fi
+
 elif [ $INSTALL_OPTION -eq 2 ]; then
 	# install the service
   install_service
