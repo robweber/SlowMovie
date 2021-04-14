@@ -2,13 +2,16 @@
 
 GIT_REPO=https://github.com/robweber/SlowMovie
 GIT_BRANCH=install_script_testing
-PYTHON_VERSION=3
 SKIP_DEPS=false
 
 # color code variables
 RED="\e[0;91m"
 YELLOW="\e[0;93m"
 RESET="\e[0m"
+
+# file paths
+SERVICE_DIR=/etc/systemd/system
+SERVICE_FILE=slowmovie.service
 
 function install_linux_packages(){
   sudo apt-get update
@@ -17,9 +20,6 @@ function install_linux_packages(){
 }
 
 function install_python_packages(){
-  # set the python3 as the default version
-  sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 1
-  sudo update-alternatives --set python /usr/bin/python${PYTHON_VERSION}
 
 
   sudo pip3 install setuptools -U
@@ -61,6 +61,15 @@ function setup_hardware(){
   fi
 }
 
+function service_installed(){
+  # return 0 if the service is installed, 1 if no
+  if [ -f "$SERVICE_DIR/$SERVICE_FILE" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
 function install_slowmovie(){
   FIRST_TIME=1  # if this is a first time install
 
@@ -98,7 +107,16 @@ function install_slowmovie(){
   fi
 
   cd $LOCAL_DIR
-  echo -e "SlowMovie install/update complete"
+
+  # check if the service file needs to be updated
+  if (service_installed) && ! (cmp -s "slowmovie.service" "/etc/systemd/system/slowmovie.service"); then
+    sudo cp $SERVICE_FILE $SERVICE_DIR
+    sudo systemctl daemon-reload
+
+    echo -e "Updating SlowMovie service file"
+  fi
+
+  echo -e "SlowMovie install/update complete. To test, run '${YELLOW}python3 slowmovie.py${RESET}'"
 
   return $FIRST_TIME
 }
@@ -106,12 +124,17 @@ function install_slowmovie(){
 function install_service(){
   if [ -d "${LOCAL_DIR}" ]; then
     cd $LOCAL_DIR
-    # install the service files and enable
-    sudo cp slowmovie.service /etc/systemd/system
-    sudo systemctl daemon-reload
-    sudo systemctl enable slowmovie
 
-    echo -e "SlowMovie service installed! Use ${YELLOW}sudo systemctl start slowmovie${RESET} to test"
+    if ! (service_installed); then
+      # install the service files and enable
+      sudo cp $SERVICE_FILE $SERVICE_DIR
+      sudo systemctl daemon-reload
+      sudo systemctl enable slowmovie
+
+      echo -e "SlowMovie service installed! Use ${YELLOW}sudo systemctl start slowmovie${RESET} to test"
+    else
+      echo -e "${RED}SlowMovie service is already installed.${RESET}"
+    fi
   else
     echo -e "${RED}SlowMovie repo does not exist! Use option 1 - Install/Upgrade SlowMovie first${RESET}"
   fi
@@ -121,11 +144,11 @@ function install_service(){
 }
 
 function uninstall_service(){
-  if [ -f "/etc/systemd/system/slowmovie.service" ]; then
+  if (service_installed); then
     # stop if running and remove service files
     sudo systemctl stop slowmovie
     sudo systemctl disable slowmovie
-    sudo rm /etc/systemd/system/slowmovie.service
+    sudo rm "${SERVICE_DIR}/${SERVICE_FILE}"
     sudo systemctl daemon-reload
 
     echo -e "SlowMovie service was successfully uninstalled"
@@ -161,26 +184,50 @@ done
 # set the local directory
 LOCAL_DIR="/home/pi/$(basename $GIT_REPO)"
 
-echo -e "SlowMovie Repo set to ${YELLOW}${GIT_REPO}/${GIT_BRANCH}${RESET}"
-echo -e "Setting up in local directory ${YELLOW}${LOCAL_DIR}${RESET}"
-echo -e ""
 cd /home/pi/
 
-INSTALL_OPTION=$(whiptail --menu "Choose what you want to do." 0 0 0 1 "Install/Upgrade SlowMovie" 2 "Install SlowMovie Service" 3 "Uninstall SlowMovie Service" 4 "Exit" 3>&1 1>&2 2>&3)
+# check if service is currently running and stop if it is
+RESTART_SERVICE="FALSE"
+
+if (systemctl is-active --quiet slowmovie); then
+  sudo systemctl stop slowmovie
+  RESTART_SERVICE="TRUE"
+fi
+
+INSTALL_OPTION=$(whiptail --menu "\
+   _____ _               __  __            _
+  / ____| |             |  \/  |          (_)
+ | (___ | | _____      _| \  / | _____   ___  ___
+  \___ \| |/ _ \ \ /\ / / |\/| |/ _ \ \ / / |/ _ \\
+  ____) | | (_) \ V  V /| |  | | (_) \ V /| |  __/
+ |_____/|_|\___/ \_/\_/ |_|  |_|\___/ \_/ |_|\___|
+
+ Repo set to '${GIT_REPO}/${GIT_BRANCH}'
+ Setting up in local directory '${LOCAL_DIR}'
+
+ Choose what you want to do." 0 0 0 \
+1 "Install/Upgrade SlowMovie" \
+2 "Install SlowMovie Service" \
+3 "Uninstall SlowMovie Service" \
+3>&1 1>&2 2>&3)
 
 : ${INSTALL_OPTION:=4}
 
 if [ $INSTALL_OPTION -eq 1 ]; then
+
+  # prompt for service install if the first time being run
+  INSTALL_SERVICE=1
+  if [ ! -d "${LOCAL_DIR}"]; then
+    whiptail --yesno "Would you like to install the SlowMovie Service to\nstart playback automatically?" 0 0
+    INSTALL_SERVICE=$?
+  fi
+
 	# install or update
   install_slowmovie
 
-  # prompt for service install if the first time being run
-  if [ $? -eq 0 ]; then
-    whiptail --yesno "SlowMovie install complete. To test, run 'python3 slowmovie.py'\n\nWould you like to install the SlowMovie Service to\nstart playback automatically?" 0 0
-
-    if [ $? -eq 0 ]; then
-      install_service
-    fi
+  # install service, if desired
+  if [ $INSTALL_SERVICE ]; then
+    install_service
   fi
 
 elif [ $INSTALL_OPTION -eq 2 ]; then
@@ -189,4 +236,8 @@ elif [ $INSTALL_OPTION -eq 2 ]; then
 elif [ $INSTALL_OPTION -eq 3 ]; then
 	# uninstall the service
   uninstall_service
+fi
+
+if [ "${RESTART_SERVICE}" = "TRUE" ] && (service_installed); then
+  sudo systemctl start slowmovie
 fi
