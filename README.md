@@ -26,7 +26,7 @@ You can quickly install this repository and all required libraries via an instal
 
 To run the install script, open your terminal, copy-paste the following command in, and hit enter.
 
-    bash <(curl https://raw.githubusercontent.com/TomWhitwell/SlowMovie/master/Install/install.sh)
+    bash <(curl https://raw.githubusercontent.com/TomWhitwell/SlowMovie/main/Install/install.sh)
 
 You'll be presented with 4 options when you run the script:
 
@@ -35,7 +35,7 @@ You'll be presented with 4 options when you run the script:
 3. **Uninstall SlowMovie Service** - uninstall the SlowMovie service
 4. **Exit**
 
-You can re-run the script at any time in the `Install` folder to update.
+For first-time automated installation, choose 1: Install/Upgrade SlowMovie. When prompted, you can choose "yes" to have the SlowMovie service installed as well which will enable playback to start automatically when the device is powered on or rebooted.
 
 ### Manual installation
 
@@ -109,9 +109,9 @@ If an arg is specified in more than one place, then commandline values override
 config file values, which in turn override defaults.
 ```
 
-### Running as a service
+### SlowMovie Service
 
-SlowMovie can run as a service. To set this up, from the SlowMovie directory run the following:
+SlowMovie can run as a service. To set this up you can either use option 2 from the install script ([see above](https://github.com/TomWhitwell/SlowMovie/#automated-installation)) or from the SlowMovie directory run the following:
 
 ```
 sudo cp slowmovie.service /etc/systemd/system
