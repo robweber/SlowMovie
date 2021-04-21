@@ -14,9 +14,7 @@ import os, time, sys, random
 from PIL import Image
 import ffmpeg
 import argparse
-
-# Ensure this is the correct import for your particular screen
-from inky.inky_uc8159 import Inky, CLEAN
+from omni_epd import displayfactory
 
 
 def generate_frame(in_filename, out_filename, time, width, height):
@@ -34,16 +32,6 @@ def check_mp4(value):
     if not value.endswith(".mp4"):
         raise argparse.ArgumentTypeError("%s should be an .mp4 file" % value)
     return value
-
-
-def inky_clear(inky):
-    for _ in range(2):
-        for y in range(inky.height - 1):
-            for x in range(inky.width - 1):
-                inky.set_pixel(x, y, CLEAN)
-
-        inky.show()
-        time.sleep(1.0)
 
 
 # Ensure this is the correct path to your video folder
@@ -152,11 +140,12 @@ if args.file:
 print("The current video is %s" % currentVideo)
 
 # Ensure this is the correct driver for your particular screen
-inky = Inky()
+epd = displayfactory.load_display_driver('inky.impression')
 
 # Initialise and clear the screen
 print("Clearing the screen")
-inky_clear(inky)
+epd.prepare()
+epd.clear()
 
 currentPosition = 0
 
@@ -171,8 +160,8 @@ if args.start:
     currentPosition = float(args.start)
 
 # Set the width and height of the screen from the Inky library
-width = inky.width
-height = inky.height
+width = epd.width
+height = epd.height
 
 inputVid = viddir + currentVideo
 
@@ -196,8 +185,9 @@ while 1:
     pil_im = Image.open("grab.jpg")
 
     # display the image
-    inky.set_image(pil_im, saturation=float(args.saturation))
-    inky.show()
+    epd.prepare()  # not strictly needed for inky but other displays might implement this
+    epd.display(pil_im)
+
     print("Diplaying frame %d of %s" % (frame, currentVideo))
 
     currentPosition = currentPosition + increment
